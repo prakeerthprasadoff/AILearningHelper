@@ -38,7 +38,21 @@ function ChatPanel({ courseName }) {
     setIsLoading(true);
 
     try {
-      // Call backend API
+      // Build conversation history for the backend (excluding the initial greeting)
+      const conversationHistory = messages
+        .filter(msg => msg.id !== 1) // Exclude initial greeting
+        .map(msg => ({
+          role: msg.sender === "student" ? "user" : "assistant",
+          content: msg.text
+        }));
+      
+      // Add the new message
+      conversationHistory.push({
+        role: "user",
+        content: cleanDraft
+      });
+
+      // Call backend API with conversation history
       const response = await fetch(`${config.API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: {
@@ -47,6 +61,7 @@ function ChatPanel({ courseName }) {
         body: JSON.stringify({
           message: cleanDraft,
           course_name: courseName,
+          conversation_history: conversationHistory,
         }),
       });
 

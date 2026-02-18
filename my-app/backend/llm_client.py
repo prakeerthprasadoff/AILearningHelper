@@ -2,7 +2,7 @@ import os
 import requests
 import json
 import logging
-from typing import Optional, Generator
+from typing import Optional, Generator, List, Dict, Any
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -36,19 +36,23 @@ class AzureLLMClient:
         user_message: str,
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
-        max_tokens: int = 1000
-    ) -> str:
+        max_tokens: int = 1000,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None
+    ) -> Dict[str, Any]:
         """
-        Get a completion from Azure OpenAI.
+        Get a completion from Azure OpenAI with optional function calling support.
         
         Args:
             user_message: The user's input message
             system_prompt: Optional system prompt to set context
             temperature: Controls randomness (0-1)
             max_tokens: Maximum tokens in response
+            tools: Optional list of tool definitions for function calling
+            conversation_history: Optional conversation history (list of {role, content})
             
         Returns:
-            The AI's response text
+            Dict with 'content' (str), 'tool_calls' (list), and 'finish_reason' (str)
         """
         try:
             messages = []
@@ -59,10 +63,15 @@ class AzureLLMClient:
                     'content': system_prompt
                 })
             
-            messages.append({
-                'role': 'user',
-                'content': user_message
-            })
+            # Add conversation history if provided
+            if conversation_history:
+                messages.extend(conversation_history)
+            else:
+                # Fall back to just adding the current user message
+                messages.append({
+                    'role': 'user',
+                    'content': user_message
+                })
             
             payload = {
                 'messages': messages,
@@ -72,6 +81,11 @@ class AzureLLMClient:
                 'frequency_penalty': 0,
                 'presence_penalty': 0
             }
+            
+            # Add tools if provided
+            if tools:
+                payload['tools'] = tools
+                payload['tool_choice'] = 'auto'
             
             logger.info(f"Sending request to Azure OpenAI endpoint")
             
@@ -87,24 +101,112 @@ class AzureLLMClient:
             result = response.json()
             
             if 'choices' in result and len(result['choices']) > 0:
-                ai_message = result['choices'][0]['message']['content']
-                logger.info("Successfully received response from Azure OpenAI")
-                return ai_message
+                choice = result['choices'][0]
+                message = choice['message']
+                
+                return {
+                    'content': message.get('content', ''),
+                    'tool_calls': message.get('tool_calls', []),
+                    'finish_reason': choice.get('finish_reason', 'stop')
+                }
             else:
                 logger.error("Unexpected response format from Azure OpenAI")
-                return "I apologize, but I encountered an issue generating a response. Please try again."
+                return {
+                    'content': "I apologize, but I encountered an issue generating a response. Please try again.",
+                    'tool_calls': [],
+                    'finish_reason': 'error'
+                }
                 
         except requests.exceptions.Timeout:
             logger.error("Request to Azure OpenAI timed out")
-            return "I apologize, but the request timed out. Please try again."
+            return {
+                'content': "I apologize, but the request timed out. Please try again.",
+                'tool_calls': [],
+                'finish_reason': 'error'
+            }
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Request error: {str(e)}")
-            return f"I apologize, but I encountered an error: {str(e)}"
+            return {
+                'content': f"I apologize, but I encountered an error: {str(e)}",
+                'tool_calls': [],
+                'finish_reason': 'error'
+            }
             
         except Exception as e:
             logger.error(f"Unexpected error in get_completion: {str(e)}")
-            return "I apologize, but I encountered an unexpected error. Please try again."
+            return {
+                'content': "I apologize, but I encountered an unexpected error. Please try again.",
+                'tool_calls': [],
+                'finish_reason': 'error'
+            }
+    
+    def get_completion_with_tool_result(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1000
+    ) -> Dict[str, Any]:
+        """
+        Continue a conversation with tool results.
+        
+        Args:
+            messages: Full conversation history including tool results
+            tools: Optional list of tool definitions
+            temperature: Controls randomness
+            max_tokens: Maximum tokens in response
+            
+        Returns:
+            Dict with 'content', 'tool_calls', and 'finish_reason'
+        """
+        try:
+            payload = {
+                'messages': messages,
+                'temperature': temperature,
+                'max_tokens': max_tokens,
+                'top_p': 0.95,
+                'frequency_penalty': 0,
+                'presence_penalty': 0
+            }
+            
+            if tools:
+                payload['tools'] = tools
+                payload['tool_choice'] = 'auto'
+            
+            response = requests.post(
+                self.endpoint,
+                headers=self.headers,
+                json=payload,
+                timeout=60
+            )
+            
+            response.raise_for_status()
+            result = response.json()
+            
+            if 'choices' in result and len(result['choices']) > 0:
+                choice = result['choices'][0]
+                message = choice['message']
+                
+                return {
+                    'content': message.get('content', ''),
+                    'tool_calls': message.get('tool_calls', []),
+                    'finish_reason': choice.get('finish_reason', 'stop')
+                }
+            else:
+                return {
+                    'content': "Error processing response.",
+                    'tool_calls': [],
+                    'finish_reason': 'error'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error in get_completion_with_tool_result: {str(e)}")
+            return {
+                'content': f"Error: {str(e)}",
+                'tool_calls': [],
+                'finish_reason': 'error'
+            }
     
     def get_streaming_completion(
         self,
