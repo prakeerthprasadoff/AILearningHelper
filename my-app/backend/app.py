@@ -43,7 +43,21 @@ def chat():
         system_prompt = f"""You are an AI homework helper for students. 
 You are currently helping with {course_name}. 
 Provide clear, educational explanations. Break down complex concepts step by step.
-Be encouraging and supportive."""
+Be encouraging and supportive.
+
+IMPORTANT: When including mathematical notation:
+- Use $...$ for inline math (e.g., $x^2 + y^2$)
+- Use $$...$$ for display/block math equations (e.g., $$\\frac{{d}}{{dx}}(x^n) = nx^{{n-1}}$$)
+- DO NOT use \\[ \\] or \\( \\) notation
+- Always use double backslashes for LaTeX commands in markdown (e.g., \\frac, \\cdot, \\sum)
+- Format all mathematical expressions using proper LaTeX syntax within $ or $$ delimiters
+
+Example of proper formatting:
+The derivative of $x^2$ is $2x$.
+
+The product rule states:
+$$\\frac{{d}}{{dx}}[u(x) \\cdot v(x)] = u'(x) \\cdot v(x) + u(x) \\cdot v'(x)$$
+"""
         
         # Get response from Azure LLM
         ai_response = llm_client.get_completion(
@@ -52,6 +66,7 @@ Be encouraging and supportive."""
         )
         
         logger.info(f"Generated AI response successfully")
+        logger.info(f"AI Response text (first 500 chars): {ai_response[:500]}")
         
         return jsonify({
             'response': ai_response,
