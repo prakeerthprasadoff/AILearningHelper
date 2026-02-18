@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env/
+env/
+venv/
+
+# Uploaded files
+uploads/
+
+# Wolfram Alpha cache
+wolfram_questions.json
+wolfram_questions_for_llm.txt

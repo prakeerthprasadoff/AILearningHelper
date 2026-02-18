@@ -392,10 +392,12 @@ def run_server(port: int = 5000):
     Run an HTTP API server compatible with my-app.
     Serves GET /api/query?q=<question> returning JSON suitable for the chat.
     Uses wolfram_questions.json first; falls back to Wolfram API if WOLFRAM_APP_ID set.
+    Also handles file uploads at POST /api/upload.
     """
     try:
-        from flask import Flask, jsonify, request  # type: ignore
+        from flask import Flask, jsonify, request, send_from_directory  # type: ignore
         from flask_cors import CORS  # type: ignore
+        from werkzeug.utils import secure_filename  # type: ignore
     except ImportError:
         print("For server mode, install: pip install flask flask-cors")
         return 1
@@ -414,6 +416,18 @@ def run_server(port: int = 5000):
             pass
 
     app_id = os.environ.get("WOLFRAM_APP_ID") or WOLFRAM_APP_ID
+
+    # File upload configuration
+    uploads_dir = script_dir / "uploads"
+    uploads_dir.mkdir(exist_ok=True)
+    app.config['UPLOAD_FOLDER'] = str(uploads_dir)
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+    # Allowed file extensions
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'}
+
+    def allowed_file(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
     @app.route("/api/query")
     def api_query():
@@ -438,8 +452,65 @@ def run_server(port: int = 5000):
 
         return jsonify({"text": "Question not in cache. Set WOLFRAM_APP_ID to query Wolfram Alpha live.", "answer": "", "steps": ""}), 404
 
+    @app.route("/api/upload", methods=['POST'])
+    def upload_file():
+        if 'file' not in request.files:
+            return jsonify({"error": "No file part"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            # Add timestamp to avoid conflicts
+            timestamp = int(time.time() * 1000)
+            name, ext = os.path.splitext(filename)
+            unique_filename = f"{name}_{timestamp}{ext}"
+            filepath = uploads_dir / unique_filename
+            
+            file.save(str(filepath))
+            
+            return jsonify({
+                "success": True,
+                "filename": unique_filename,
+                "originalName": file.filename,
+                "size": os.path.getsize(str(filepath))
+            }), 200
+        
+        return jsonify({"error": "File type not allowed"}), 400
+
+    @app.route("/api/files", methods=['GET'])
+    def list_files():
+        try:
+            files = []
+            for file_path in uploads_dir.iterdir():
+                if file_path.is_file():
+                    files.append({
+                        "filename": file_path.name,
+                        "size": file_path.stat().st_size,
+                        "uploadedAt": file_path.stat().st_mtime
+                    })
+            return jsonify({"files": files}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/files/<filename>", methods=['DELETE'])
+    def delete_file(filename):
+        try:
+            filepath = uploads_dir / secure_filename(filename)
+            if filepath.exists() and filepath.is_file():
+                filepath.unlink()
+                return jsonify({"success": True}), 200
+            return jsonify({"error": "File not found"}), 404
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     print(f"Wolfram API server at http://localhost:{port}")
     print("  GET /api/query?q=<question>  -> JSON { text, answer, steps }")
+    print("  POST /api/upload -> Upload files")
+    print("  GET /api/files -> List uploaded files")
+    print("  DELETE /api/files/<filename> -> Delete a file")
     print("  Compatible with my-app chat (use fetch or proxy to this URL)")
     app.run(host="0.0.0.0", port=port, debug=False)
     return 0
