@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(18px, -18px, 0) scale(1.04);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 450ms ease-out;
+}
+
+.fade-in-up {
+  animation: fadeInUp 520ms ease-out;
+}
+
+.pop-in {
+  animation: popIn 350ms ease-out;
+}
+
+.error-in {
+  animation: shake 280ms ease-out;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  pointer-events: none;
+  opacity: 0.35;
+  animation: drift 8s ease-in-out infinite;
+}
+
+.orb-one {
+  top: 8%;
+  left: -80px;
+  height: 220px;
+  width: 220px;
+  background: linear-gradient(135deg, #26648e, #4f8fc0);
+}
+
+.orb-two {
+  right: -70px;
+  bottom: 8%;
+  height: 240px;
+  width: 240px;
+  background: linear-gradient(135deg, #53d2dc, #ffe3b3);
+  animation-delay: -3s;
+}
