@@ -499,6 +499,9 @@ def run_server(port: int = 5000):
     def delete_file(filename):
         try:
             filepath = uploads_dir / secure_filename(filename)
+            # Verify the resolved path is within uploads directory (prevent path traversal)
+            if not str(filepath.resolve()).startswith(str(uploads_dir.resolve())):
+                return jsonify({"error": "Invalid filename"}), 400
             if filepath.exists() and filepath.is_file():
                 filepath.unlink()
                 return jsonify({"success": True}), 200

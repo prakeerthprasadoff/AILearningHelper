@@ -66,8 +66,10 @@ function FileUploadPanel() {
   }
 
   async function handleDeleteFile(filename) {
+    if (!filename) return;
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/api/files/${filename}`, {
+      const response = await fetch(`${API_BASE_URL}/api/files/${encodeURIComponent(filename)}`, {
         method: "DELETE",
       });
 
@@ -129,6 +131,7 @@ function FileUploadPanel() {
                 onClick={() => handleDeleteFile(file.filename)}
                 className="ml-2 text-[#FFE3B3] hover:text-red-300 transition-colors"
                 title="Delete file"
+                disabled={!file.filename}
               >
                 ✕
               </button>
