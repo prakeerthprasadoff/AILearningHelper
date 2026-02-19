@@ -122,6 +122,35 @@ def list_uploads():
         return jsonify({'error': f'Failed to list uploads: {str(e)}'}), 500
 
 
+@app.route('/api/delete-upload/<filename>', methods=['DELETE'])
+def delete_upload(filename):
+    """
+    Delete an uploaded file.
+    Expects filename in URL path.
+    Returns JSON: { "status": "success" }
+    """
+    try:
+        if not allowed_file(filename):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        filepath = UPLOADS_DIR / filename
+        
+        if not filepath.exists():
+            return jsonify({'error': 'File not found'}), 404
+        
+        if not filepath.is_file():
+            return jsonify({'error': 'Not a file'}), 400
+        
+        filepath.unlink()  # Delete the file
+        logger.info(f"File deleted: {filename}")
+        
+        return jsonify({'status': 'success', 'filename': filename}), 200
+        
+    except Exception as e:
+        logger.error(f"Error deleting file: {str(e)}")
+        return jsonify({'error': f'Failed to delete file: {str(e)}'}), 500
+
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """
