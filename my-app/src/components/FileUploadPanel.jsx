@@ -6,11 +6,12 @@ function formatFileSize(sizeBytes) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function FileUploadPanel() {
+function FileUploadPanel({ onDocumentsSelect }) {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState(new Set());
 
   // Load already-uploaded files from backend on mount
   useEffect(() => {
@@ -20,16 +21,23 @@ function FileUploadPanel() {
       .catch(() => {}); // backend may not be running yet
   }, []);
 
+  // Update parent component when selected files change
+  useEffect(() => {
+    if (onDocumentsSelect) {
+      onDocumentsSelect(Array.from(selectedFiles));
+    }
+  }, [selectedFiles, onDocumentsSelect]);
+
   async function handleFileSelect(event) {
-    const selectedFiles = Array.from(event.target.files ?? []);
+    const selectedUploadFiles = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (selectedFiles.length === 0) return;
+    if (selectedUploadFiles.length === 0) return;
 
     setUploading(true);
     setError("");
     setSuccess("");
 
-    for (const file of selectedFiles) {
+    for (const file of selectedUploadFiles) {
       const formData = new FormData();
       formData.append("file", file);
 
@@ -49,6 +57,23 @@ function FileUploadPanel() {
 
   function removeFile(filename) {
     setUploadedFiles((prev) => prev.filter((f) => f.filename !== filename));
+    setSelectedFiles((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(filename);
+      return newSet;
+    });
+  }
+
+  function toggleFileSelection(filename) {
+    setSelectedFiles((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(filename)) {
+        newSet.delete(filename);
+      } else {
+        newSet.add(filename);
+      }
+      return newSet;
+    });
   }
 
   return (
@@ -84,11 +109,19 @@ function FileUploadPanel() {
               key={file.filename}
               className="flex items-center justify-between rounded-xl bg-[#26648E]/55 p-3 text-sm text-[#EAF9FD]"
             >
-              <div className="min-w-0">
-                <p className="truncate font-medium">{file.filename}</p>
-                <p className="text-xs text-[#c8e8f3]">
-                  {formatFileSize(file.size)} · {file.type || "unknown type"}
-                </p>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <input
+                  type="checkbox"
+                  checked={selectedFiles.has(file.filename)}
+                  onChange={() => toggleFileSelection(file.filename)}
+                  className="w-4 h-4 rounded cursor-pointer"
+                />
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{file.filename}</p>
+                  <p className="text-xs text-[#c8e8f3]">
+                    {formatFileSize(file.size)} · {file.type || "unknown type"}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => removeFile(file.filename)}

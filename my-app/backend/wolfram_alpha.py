@@ -415,62 +415,6 @@ def run_server(port: int = 5000):
 
     app_id = os.environ.get("WOLFRAM_APP_ID") or WOLFRAM_APP_ID
 
-    # ── Upload endpoints ──────────────────────────────────────────
-    upload_dir = script_dir / "uploads"
-    upload_dir.mkdir(exist_ok=True)
-
-    ALLOWED_EXTENSIONS = {
-        ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp",
-        ".txt", ".md", ".csv", ".json",
-        ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
-    }
-
-    @app.route("/api/upload", methods=["POST"])
-    def api_upload():
-        if "file" not in request.files:
-            return jsonify({"error": "No file part in request"}), 400
-        file = request.files["file"]
-        if file.filename == "":
-            return jsonify({"error": "No file selected"}), 400
-
-        ext = Path(file.filename).suffix.lower()
-        if ext not in ALLOWED_EXTENSIONS:
-            return jsonify({"error": f"File type '{ext}' not allowed"}), 400
-
-        # Safe filename
-        safe_name = Path(file.filename).name.replace(" ", "_")
-        save_path = upload_dir / safe_name
-
-        # Avoid overwriting: append a counter if file already exists
-        counter = 1
-        while save_path.exists():
-            stem = Path(safe_name).stem
-            save_path = upload_dir / f"{stem}_{counter}{ext}"
-            counter += 1
-
-        file.save(str(save_path))
-        size = save_path.stat().st_size
-        return jsonify({
-            "filename": save_path.name,
-            "size": size,
-            "type": file.content_type or ext.lstrip("."),
-            "path": str(save_path),
-        }), 200
-
-    @app.route("/api/uploads")
-    def api_uploads():
-        files = []
-        for f in sorted(upload_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
-            if f.is_file():
-                files.append({
-                    "filename": f.name,
-                    "size": f.stat().st_size,
-                    "type": f.suffix.lstrip("."),
-                    "path": str(f),
-                })
-        return jsonify({"files": files})
-
-    # ── Query endpoint ────────────────────────────────────────────
     @app.route("/api/query")
     def api_query():
         q = request.args.get("q", "").strip()

@@ -25,6 +25,7 @@ const COURSES = [
 function DashboardPage() {
   const navigate = useNavigate();
   const [selectedCourseId, setSelectedCourseId] = useState(COURSES[0].id);
+  const [selectedDocuments, setSelectedDocuments] = useState([]);
 
   const selectedCourse = useMemo(
     () => COURSES.find((course) => course.id === selectedCourseId) ?? COURSES[0],
@@ -48,8 +49,8 @@ function DashboardPage() {
           onSelectCourse={setSelectedCourseId}
           onLogout={handleLogout}
         />
-        <ChatPanel courseName={selectedCourse.name} />
-        <FileUploadPanel />
+        <ChatPanel courseName={selectedCourse.name} selectedDocuments={selectedDocuments} />
+        <FileUploadPanel onDocumentsSelect={setSelectedDocuments} />
       </section>
     </main>
   );
