@@ -56,12 +56,25 @@ function FileUploadPanel({ onDocumentsSelect }) {
   }
 
   function removeFile(filename) {
-    setUploadedFiles((prev) => prev.filter((f) => f.filename !== filename));
-    setSelectedFiles((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(filename);
-      return newSet;
-    });
+    // Delete file from backend
+    fetch(`/api/delete-upload/${encodeURIComponent(filename)}`, {
+      method: 'DELETE',
+    })
+      .then((res) => {
+        if (res.ok) {
+          setUploadedFiles((prev) => prev.filter((f) => f.filename !== filename));
+          setSelectedFiles((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(filename);
+            return newSet;
+          });
+        } else {
+          setError(`Failed to delete "${filename}"`);
+        }
+      })
+      .catch((err) => {
+        setError(`Error deleting "${filename}": ${err.message}`);
+      });
   }
 
   function toggleFileSelection(filename) {

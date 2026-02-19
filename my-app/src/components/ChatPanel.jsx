@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -6,7 +6,7 @@ import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import config from "../config";
 
-function ChatPanel({ courseName, selectedDocuments }) {
+function ChatPanel({ courseName, selectedCourseId, selectedDocuments }) {
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -21,6 +21,17 @@ function ChatPanel({ courseName, selectedDocuments }) {
     () => `Ask questions about ${courseName}, assignments, and concepts.`,
     [courseName],
   );
+
+  // Clear chat history when course changes
+  useEffect(() => {
+    setMessages([
+      {
+        id: 1,
+        sender: "assistant",
+        text: "Hi! I am your AI homework helper. Ask me anything about your course material.",
+      },
+    ]);
+  }, [selectedCourseId]);
 
   async function handleSend(event) {
     event.preventDefault();

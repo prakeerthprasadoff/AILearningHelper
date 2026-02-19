@@ -6,19 +6,19 @@ import FileUploadPanel from "../components/FileUploadPanel";
 
 const COURSES = [
   {
-    id: "hci-330",
-    name: "Human Computer Interaction",
-    code: "MSAI 330",
+    id: "calc-101",
+    name: "Calculus 1",
+    code: "MATH 101",
   },
   {
-    id: "ml-350",
-    name: "Machine Learning Foundations",
-    code: "MSAI 350",
+    id: "ml-200",
+    name: "Machine Learning",
+    code: "CS 200",
   },
   {
-    id: "nlp-360",
-    name: "Natural Language Processing",
-    code: "MSAI 360",
+    id: "dl-250",
+    name: "Deep Learning",
+    code: "CS 250",
   },
 ];
 
@@ -49,7 +49,7 @@ function DashboardPage() {
           onSelectCourse={setSelectedCourseId}
           onLogout={handleLogout}
         />
-        <ChatPanel courseName={selectedCourse.name} selectedDocuments={selectedDocuments} />
+        <ChatPanel courseName={selectedCourse.name} selectedCourseId={selectedCourse.id} selectedDocuments={selectedDocuments} />
         <FileUploadPanel onDocumentsSelect={setSelectedDocuments} />
       </section>
     </main>
