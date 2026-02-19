@@ -4,6 +4,9 @@ from llm_client import AzureLLMClient
 from wolfram_tool import get_available_tools, execute_wolfram_tool
 import json
 import logging
+import os
+import PyPDF2
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,11 +18,108 @@ CORS(app)  # Enable CORS for React frontend
 # Initialize Azure LLM client
 llm_client = AzureLLMClient()
 
+# Set up uploads directory
+UPLOADS_DIR = Path(__file__).parent.parent / 'uploads'
+UPLOADS_DIR.mkdir(exist_ok=True)
+ALLOWED_EXTENSIONS = {'pdf', 'txt', 'md'}
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extract_text_from_pdf(filepath):
+    """Extract text from PDF file"""
+    try:
+        text = ""
+        with open(filepath, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            for page in reader.pages:
+                text += page.extract_text()
+        return text
+    except Exception as e:
+        logger.error(f"Error extracting PDF text: {str(e)}")
+        return ""
+
+def read_file_content(filepath):
+    """Read content from uploaded file based on extension"""
+    ext = filepath.suffix.lower()
+    try:
+        if ext == '.pdf':
+            return extract_text_from_pdf(filepath)
+        else:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return f.read()
+    except Exception as e:
+        logger.error(f"Error reading file {filepath}: {str(e)}")
+        return ""
+
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'service': 'AI Learning Helper Backend'}), 200
+
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    """
+    Handle file uploads.
+    Expects multipart/form-data with 'file' field.
+    Returns JSON: { "filename": str, "size": int, "type": str }
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'File type not allowed. Only PDF, TXT, and MD files are supported'}), 400
+        
+        # Save file
+        filepath = UPLOADS_DIR / file.filename
+        file.save(filepath)
+        
+        file_size = os.path.getsize(filepath)
+        file_type = Path(file.filename).suffix[1:].upper()
+        
+        logger.info(f"File uploaded: {file.filename} ({file_size} bytes)")
+        
+        return jsonify({
+            'filename': file.filename,
+            'size': file_size,
+            'type': file_type
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error uploading file: {str(e)}")
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+
+
+@app.route('/api/uploads', methods=['GET'])
+def list_uploads():
+    """
+    List all uploaded files.
+    Returns JSON: { "files": [{"filename": str, "size": int, "type": str}, ...] }
+    """
+    try:
+        files = []
+        if UPLOADS_DIR.exists():
+            for filepath in UPLOADS_DIR.iterdir():
+                if filepath.is_file() and allowed_file(filepath.name):
+                    files.append({
+                        'filename': filepath.name,
+                        'size': filepath.stat().st_size,
+                        'type': filepath.suffix[1:].upper()
+                    })
+        
+        return jsonify({'files': files}), 200
+        
+    except Exception as e:
+        logger.error(f"Error listing uploads: {str(e)}")
+        return jsonify({'error': f'Failed to list uploads: {str(e)}'}), 500
 
 
 @app.route('/api/chat', methods=['POST'])
@@ -29,7 +129,9 @@ def chat():
     Expects JSON: { 
         "message": "user message", 
         "course_name": "course name",
-        "conversation_history": [{"role": "user|assistant", "content": "..."}]
+        "conversation_history": [{"role": "user|assistant", "content": "..."}],
+        "document_filenames": ["file1.pdf", "file2.txt"]
+    }
     }
     Returns JSON: { "response": "AI response" }
     """
@@ -42,10 +144,27 @@ def chat():
         user_message = data['message']
         course_name = data.get('course_name', 'your course')
         conversation_history = data.get('conversation_history', [])
+        document_filenames = data.get('document_filenames', [])
         
         logger.info(f"Received chat request for course: {course_name}")
         logger.info(f"User message: {user_message}")
         logger.info(f"Conversation history length: {len(conversation_history)}")
+        logger.info(f"Documents requested: {document_filenames}")
+        
+        # Load document content if provided
+        document_context = ""
+        if document_filenames:
+            document_texts = []
+            for filename in document_filenames:
+                filepath = UPLOADS_DIR / filename
+                if filepath.exists():
+                    content = read_file_content(filepath)
+                    if content:
+                        document_texts.append(f"--- Document: {filename} ---\n{content}\n")
+                        logger.info(f"Loaded document: {filename}")
+            
+            if document_texts:
+                document_context = "\n".join(document_texts)
         
         # Build context-aware system prompt
         system_prompt = f"""You are an AI homework helper for students. 
@@ -76,6 +195,16 @@ The derivative of $x^2$ is $2x$.
 
 The product rule states:
 $$\\frac{{d}}{{dx}}[u(x) \\cdot v(x)] = u'(x) \\cdot v(x) + u(x) \\cdot v'(x)$$
+"""
+        
+        # Add document context to system prompt if available
+        if document_context:
+            system_prompt += f"""
+
+REFERENCE MATERIALS PROVIDED BY STUDENT:
+{document_context}
+
+Use the above reference materials to provide context-aware answers. You can reference specific materials from the documents when helping the student.
 """
         
         # Get available tools

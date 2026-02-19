@@ -6,7 +6,7 @@ import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import config from "../config";
 
-function ChatPanel({ courseName }) {
+function ChatPanel({ courseName, selectedDocuments }) {
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -62,6 +62,7 @@ function ChatPanel({ courseName }) {
           message: cleanDraft,
           course_name: courseName,
           conversation_history: conversationHistory,
+          document_filenames: selectedDocuments,
         }),
       });
 
