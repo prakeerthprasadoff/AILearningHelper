@@ -6,7 +6,7 @@ import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import config from "../config";
 
-function ChatPanel({ courseName, selectedCourseId, selectedDocuments }) {
+function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClassName = "" }) {
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -108,7 +108,7 @@ function ChatPanel({ courseName, selectedCourseId, selectedDocuments }) {
   }
 
   return (
-    <section className="fade-in-up flex min-h-[420px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-6 lg:min-h-0">
+    <section className={`fade-in-up flex min-h-[420px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-6 lg:min-h-0 ${panelClassName}`}>
       <header className="mb-4 border-b border-[#FFE3B3]/25 pb-3">
         <p className="text-xs uppercase tracking-wide text-[#FFE3B3]">AI Chat</p>
         <h2 className="mt-0.5 text-2xl font-semibold leading-tight text-white">{courseName}</h2>

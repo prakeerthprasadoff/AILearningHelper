@@ -1,6 +1,6 @@
-function CourseSidebar({ courses, selectedCourseId, onSelectCourse, onLogout }) {
+function CourseSidebar({ courses, selectedCourseId, onSelectCourse, onLogout, panelClassName = "" }) {
   return (
-    <aside className="fade-in-up flex min-h-[320px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-3 lg:min-h-0">
+    <aside className={`fade-in-up flex min-h-[320px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-3 lg:min-h-0 ${panelClassName}`}>
       <div className="mb-5 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-[#FFE3B3]">Courses</p>

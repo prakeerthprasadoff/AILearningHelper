@@ -6,7 +6,7 @@ function formatFileSize(sizeBytes) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function FileUploadPanel({ onDocumentsSelect }) {
+function FileUploadPanel({ onDocumentsSelect, panelClassName = "" }) {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -90,7 +90,7 @@ function FileUploadPanel({ onDocumentsSelect }) {
   }
 
   return (
-    <aside className="fade-in-up flex min-h-[320px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-3 lg:min-h-0">
+    <aside className={`fade-in-up flex min-h-[320px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-3 lg:min-h-0 ${panelClassName}`}>
       <div className="mb-4 border-b border-[#FFE3B3]/25 pb-3">
         <p className="text-xs uppercase tracking-wide text-[#FFE3B3]">Resources</p>
         <h2 className="text-lg font-semibold text-white">Upload files</h2>
