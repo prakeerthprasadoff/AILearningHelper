@@ -6,6 +6,11 @@ import FileUploadPanel from "../components/FileUploadPanel";
 
 const COURSES = [
   {
+    id: "mech-101",
+    name: "Mechatronics",
+    code: "MECH 101",
+  },
+  {
     id: "calc-101",
     name: "Calculus 1",
     code: "MATH 101",
