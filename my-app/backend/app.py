@@ -32,8 +32,8 @@ CORS(app)  # Enable CORS for React frontend
 init_db()
 llm_client = AzureLLMClient()
 
-# Set up uploads directory
-UPLOADS_DIR = Path(__file__).parent.parent / 'uploads'
+# Set up uploads directory (inside backend folder for Render compatibility)
+UPLOADS_DIR = Path(__file__).parent / 'uploads'
 UPLOADS_DIR.mkdir(exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'md'}
 
