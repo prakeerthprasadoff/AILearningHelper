@@ -5,6 +5,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import config from "../config";
+import { getUserIdentifier } from "../utils/auth";
 
 function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClassName = "" }) {
   const [draft, setDraft] = useState("");
@@ -16,6 +17,8 @@ function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClass
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [useMemory, setUseMemory] = useState(true);
+  const [similarQuestionNote, setSimilarQuestionNote] = useState(null);
 
   const greeting = useMemo(
     () => `Ask questions about ${courseName}, assignments, and concepts.`,
@@ -63,7 +66,7 @@ function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClass
         content: cleanDraft
       });
 
-      // Call backend API with conversation history
+      // Call backend API with conversation history and personalization
       const response = await fetch(`${config.API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: {
@@ -74,6 +77,8 @@ function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClass
           course_name: courseName,
           conversation_history: conversationHistory,
           document_filenames: selectedDocuments,
+          user_identifier: getUserIdentifier(),
+          use_memory: useMemory,
         }),
       });
 
@@ -82,12 +87,18 @@ function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClass
       }
 
       const data = await response.json();
+      if (data.similar_question) {
+        setSimilarQuestionNote(data.similar_question.note || "You asked something similar before.");
+      } else {
+        setSimilarQuestionNote(null);
+      }
 
-      // Add AI response to messages
+      // Add AI response to messages (store for "Add to mistakes")
       const aiMessage = {
         id: Date.now() + 1,
         sender: "assistant",
         text: data.response,
+        linkedUserMessage: cleanDraft,
       };
 
       setMessages((prev) => [...prev, aiMessage]);
@@ -107,12 +118,54 @@ function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClass
     }
   }
 
+  async function addToMistakes(question, correction, messageId) {
+    try {
+      const res = await fetch(`${config.API_BASE_URL}/api/mistakes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_identifier: getUserIdentifier(),
+          course: courseName,
+          question: question || "From chat",
+          correction: (correction || "").slice(0, 1000),
+        }),
+      });
+      if (res.ok) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId ? { ...m, mistakeSaved: true } : m
+          )
+        );
+      }
+    } catch (e) {
+      console.error("Failed to add mistake", e);
+    }
+  }
+
   return (
     <section className={`fade-in-up flex min-h-[420px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-6 lg:min-h-0 ${panelClassName}`}>
       <header className="mb-4 border-b border-[#FFE3B3]/25 pb-3">
-        <p className="text-xs uppercase tracking-wide text-[#FFE3B3]">AI Chat</p>
-        <h2 className="mt-0.5 text-2xl font-semibold leading-tight text-white">{courseName}</h2>
-        <p className="mt-1 text-sm leading-6 text-[#E8F7FB]">{greeting}</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[#FFE3B3]">AI Chat</p>
+            <h2 className="mt-0.5 text-2xl font-semibold leading-tight text-white">{courseName}</h2>
+            <p className="mt-1 text-sm leading-6 text-[#E8F7FB]">{greeting}</p>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-[#E8F7FB]">
+            <input
+              type="checkbox"
+              checked={useMemory}
+              onChange={(e) => setUseMemory(e.target.checked)}
+              className="h-4 w-4 rounded border-[#FFE3B3]/60 bg-[#26648E]/55 text-[#FFE3B3] focus:ring-[#FFE3B3]"
+            />
+            Use my history & memory
+          </label>
+        </div>
+        {similarQuestionNote && (
+          <p className="mt-2 rounded-lg border border-[#FFE3B3]/50 bg-[#FFE3B3]/20 px-2 py-1 text-xs text-[#1f4d6f]">
+            {similarQuestionNote}
+          </p>
+        )}
       </header>
 
       <div className="flex-1 space-y-3 overflow-y-auto pr-1 lg:min-h-0">
@@ -126,14 +179,34 @@ function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClass
             }`}
           >
             {message.sender === "assistant" ? (
-              <div className="markdown-content">
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                >
-                  {message.text}
-                </ReactMarkdown>
-              </div>
+              <>
+                <div className="markdown-content">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {message.text}
+                  </ReactMarkdown>
+                </div>
+                {message.id !== 1 && useMemory && !message.mistakeSaved && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      addToMistakes(
+                        message.linkedUserMessage,
+                        message.text,
+                        message.id
+                      )
+                    }
+                    className="mt-2 rounded-lg border border-[#1f4d6f]/50 bg-[#1f4d6f]/30 px-2 py-1 text-xs font-medium text-[#1f4d6f] hover:bg-[#1f4d6f]/50"
+                  >
+                    Add to my mistakes
+                  </button>
+                )}
+                {message.mistakeSaved && (
+                  <span className="mt-2 block text-xs text-[#1f4d6f]/80">Saved to mistakes.</span>
+                )}
+              </>
             ) : (
               message.text
             )}

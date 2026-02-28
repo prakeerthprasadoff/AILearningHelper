@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import ChatPanel from "../components/ChatPanel";
 import CourseSidebar from "../components/CourseSidebar";
 import FileUploadPanel from "../components/FileUploadPanel";
+import MistakesPanel from "../components/MistakesPanel";
+import StudyPlanPanel from "../components/StudyPlanPanel";
+import WeeklyReviewPanel from "../components/WeeklyReviewPanel";
+import GeneratePanel from "../components/GeneratePanel";
 
 const COURSES = [
   {
@@ -49,6 +53,7 @@ function DashboardPage() {
   const navigate = useNavigate();
   const [selectedCourseId, setSelectedCourseId] = useState(COURSES[0].id);
   const [selectedDocuments, setSelectedDocuments] = useState([]);
+  const [selectedLearningView, setSelectedLearningView] = useState(null);
   const [tourStepIndex, setTourStepIndex] = useState(-1);
 
   const selectedCourse = useMemo(
@@ -132,18 +137,41 @@ function DashboardPage() {
           selectedCourseId={selectedCourse.id}
           onSelectCourse={setSelectedCourseId}
           onLogout={handleLogout}
+          selectedLearningView={selectedLearningView}
+          onSelectLearningView={setSelectedLearningView}
           panelClassName={coursesHighlightClass}
         />
-        <ChatPanel
-          courseName={selectedCourse.name}
-          selectedCourseId={selectedCourse.id}
-          selectedDocuments={selectedDocuments}
-          panelClassName={chatHighlightClass}
-        />
-        <FileUploadPanel
-          onDocumentsSelect={setSelectedDocuments}
-          panelClassName={docsHighlightClass}
-        />
+        {selectedLearningView && (
+          <div className={`lg:col-span-9 ${chatHighlightClass}`}>
+            {selectedLearningView === "mistakes" && (
+              <MistakesPanel courseName={selectedCourse.name} />
+            )}
+            {selectedLearningView === "study-plan" && <StudyPlanPanel />}
+            {selectedLearningView === "weekly-review" && (
+              <WeeklyReviewPanel courseName={selectedCourse.name} />
+            )}
+            {selectedLearningView === "generate" && (
+              <GeneratePanel
+                courseName={selectedCourse.name}
+                selectedDocuments={selectedDocuments}
+              />
+            )}
+          </div>
+        )}
+        {!selectedLearningView && (
+          <>
+            <ChatPanel
+              courseName={selectedCourse.name}
+              selectedCourseId={selectedCourse.id}
+              selectedDocuments={selectedDocuments}
+              panelClassName={chatHighlightClass}
+            />
+            <FileUploadPanel
+              onDocumentsSelect={setSelectedDocuments}
+              panelClassName={docsHighlightClass}
+            />
+          </>
+        )}
       </section>
 
       {isTourOpen ? (

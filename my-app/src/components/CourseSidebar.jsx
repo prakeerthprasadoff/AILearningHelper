@@ -1,4 +1,19 @@
-function CourseSidebar({ courses, selectedCourseId, onSelectCourse, onLogout, panelClassName = "" }) {
+const LEARNING_VIEWS = [
+  { id: "mistakes", label: "My mistakes" },
+  { id: "study-plan", label: "Study plan" },
+  { id: "weekly-review", label: "Weekly review" },
+  { id: "generate", label: "Generate materials" },
+];
+
+function CourseSidebar({
+  courses,
+  selectedCourseId,
+  onSelectCourse,
+  onLogout,
+  selectedLearningView,
+  onSelectLearningView,
+  panelClassName = "",
+}) {
   return (
     <aside className={`fade-in-up flex min-h-[320px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-3 lg:min-h-0 ${panelClassName}`}>
       <div className="mb-5 flex items-center justify-between">
@@ -17,12 +32,15 @@ function CourseSidebar({ courses, selectedCourseId, onSelectCourse, onLogout, pa
 
       <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
         {courses.map((course) => {
-          const isSelected = selectedCourseId === course.id;
+          const isSelected = selectedCourseId === course.id && !selectedLearningView;
           return (
             <button
               key={course.id}
               type="button"
-              onClick={() => onSelectCourse(course.id)}
+              onClick={() => {
+                onSelectLearningView?.(null);
+                onSelectCourse(course.id);
+              }}
               className={`group flex w-full cursor-pointer items-center justify-between rounded-xl border px-3 py-3 text-left text-sm transition-all duration-300 ${
                 isSelected
                   ? "border-[#FFE3B3]/80 bg-[#FFE3B3]/30 text-white shadow-md shadow-[#26648E]/40"
@@ -48,6 +66,26 @@ function CourseSidebar({ courses, selectedCourseId, onSelectCourse, onLogout, pa
             </button>
           );
         })}
+        <div className="mt-4 border-t border-[#FFE3B3]/25 pt-3">
+          <p className="mb-2 text-xs uppercase tracking-wide text-[#FFE3B3]">Learning</p>
+          {LEARNING_VIEWS.map((view) => {
+            const isActive = selectedLearningView === view.id;
+            return (
+              <button
+                key={view.id}
+                type="button"
+                onClick={() => onSelectLearningView?.(isActive ? null : view.id)}
+                className={`mb-1.5 flex w-full cursor-pointer items-center rounded-lg border px-2 py-2 text-left text-sm transition-all ${
+                  isActive
+                    ? "border-[#FFE3B3]/60 bg-[#FFE3B3]/25 text-[#FFE3B3]"
+                    : "border-[#53D2DC]/20 bg-[#26648E]/40 text-[#E8F7FB] hover:bg-[#4F8FC0]/30"
+                }`}
+              >
+                {view.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </aside>
   );

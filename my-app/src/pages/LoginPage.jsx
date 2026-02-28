@@ -25,6 +25,7 @@ function LoginPage() {
 
     if (email.trim().toLowerCase() === DEMO_EMAIL && password === DEMO_PASSWORD) {
       sessionStorage.setItem("student_auth", "true");
+      sessionStorage.setItem("student_email", email.trim().toLowerCase());
       navigate("/dashboard");
       return;
     }
