@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from llm_client import AzureLLMClient
 from wolfram_tool import get_available_tools, execute_wolfram_tool
@@ -7,6 +7,7 @@ import logging
 import os
 import PyPDF2
 from pathlib import Path
+import re
 
 from db import (
     init_db,
@@ -54,6 +55,23 @@ def extract_text_from_pdf(filepath):
         logger.error(f"Error extracting PDF text: {str(e)}")
         return ""
 
+def extract_pdf_pages(filepath):
+    """Extract per-page text from PDF for citation-aware retrieval."""
+    pages = []
+    try:
+        with open(filepath, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            for idx, page in enumerate(reader.pages, start=1):
+                page_text = page.extract_text() or ""
+                if page_text.strip():
+                    pages.append({
+                        "page": idx,
+                        "text": page_text.strip(),
+                    })
+    except Exception as e:
+        logger.error(f"Error extracting PDF pages from {filepath}: {str(e)}")
+    return pages
+
 def read_file_content(filepath):
     """Read content from uploaded file based on extension"""
     ext = filepath.suffix.lower()
@@ -66,6 +84,159 @@ def read_file_content(filepath):
     except Exception as e:
         logger.error(f"Error reading file {filepath}: {str(e)}")
         return ""
+
+def _tokenize_for_retrieval(text):
+    tokens = re.findall(r"[A-Za-z0-9]+", (text or "").lower())
+    return {t for t in tokens if len(t) > 2}
+
+def _split_text_into_chunks(text, max_chars=900):
+    """Split text into reasonably sized chunks for retrieval."""
+    if not text:
+        return []
+
+    normalized = text.replace('\r', '')
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", normalized) if p.strip()]
+    if not paragraphs:
+        paragraphs = [line.strip() for line in normalized.split('\n') if line.strip()]
+
+    chunks = []
+    current = []
+    current_len = 0
+    for para in paragraphs:
+        para_len = len(para)
+        if current and current_len + para_len + 2 > max_chars:
+            chunks.append("\n\n".join(current))
+            current = [para]
+            current_len = para_len
+        else:
+            current.append(para)
+            current_len += para_len + 2
+    if current:
+        chunks.append("\n\n".join(current))
+    return chunks
+
+def _is_question_heavy(text):
+    low = (text or "").lower()
+    return (
+        low.count("?") >= 2
+        or "practice question" in low
+        or "review question" in low
+        or "test yourself" in low
+    )
+
+def _best_snippet(text, answer_tokens, fallback_len=260):
+    if not text:
+        return ""
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+    if not sentences:
+        return text[:fallback_len]
+    best = sentences[0]
+    best_score = -1
+    for s in sentences:
+        score = len(_tokenize_for_retrieval(s) & answer_tokens)
+        if score > best_score:
+            best_score = score
+            best = s
+    return best[:fallback_len]
+
+def build_relevant_document_context(user_message, document_filenames, max_chunks=6):
+    """
+    Build compact, citation-friendly document context from selected files.
+    Returns:
+      context_text (str): formatted source chunks for the prompt
+      selected_chunks (list): chunk dicts used in prompt and citation reranking
+    """
+    query_tokens = _tokenize_for_retrieval(user_message)
+    if not document_filenames:
+        return "", []
+
+    chunks = []
+    for filename in document_filenames:
+        filepath = UPLOADS_DIR / filename
+        if not filepath.exists() or not filepath.is_file():
+            continue
+
+        ext = filepath.suffix.lower()
+        if ext == ".pdf":
+            for page_data in extract_pdf_pages(filepath):
+                page_text = page_data["text"]
+                for chunk_text in _split_text_into_chunks(page_text, max_chars=900):
+                    page_tokens = _tokenize_for_retrieval(chunk_text)
+                    score = len(query_tokens & page_tokens) if query_tokens else 0
+                    # Strongly prefer content sections over question banks.
+                    if _is_question_heavy(chunk_text):
+                        score -= 2
+                    chunks.append({
+                        "filename": filename,
+                        "page": page_data["page"],
+                        "text": chunk_text[:2200],
+                        "score": score,
+                    })
+        else:
+            text = read_file_content(filepath)
+            if text:
+                for chunk_text in _split_text_into_chunks(text, max_chars=900):
+                    score = len(query_tokens & _tokenize_for_retrieval(chunk_text)) if query_tokens else 0
+                    if _is_question_heavy(chunk_text):
+                        score -= 2
+                    chunks.append({
+                        "filename": filename,
+                        "page": None,
+                        "text": chunk_text[:2200],
+                        "score": score,
+                    })
+
+    if not chunks:
+        return "", []
+
+    chunks.sort(key=lambda c: c["score"], reverse=True)
+    top_chunks = [c for c in chunks if c["score"] > 0][:max_chunks]
+    if not top_chunks:
+        top_chunks = chunks[:max_chunks]
+
+    context_parts = []
+    for chunk in top_chunks:
+        page_part = f" page {chunk['page']}" if chunk["page"] else ""
+        context_parts.append(
+            f"--- Source: {chunk['filename']}{page_part} ---\n{chunk['text']}\n"
+        )
+
+    return "\n".join(context_parts), top_chunks
+
+def select_citations_for_answer(chunks, user_message, ai_response, max_citations=1):
+    """Pick best supporting citations based on the generated response and question."""
+    if not chunks:
+        return []
+
+    answer_tokens = _tokenize_for_retrieval(ai_response)
+    query_tokens = _tokenize_for_retrieval(user_message)
+    scored = []
+    for chunk in chunks:
+        chunk_tokens = _tokenize_for_retrieval(chunk["text"])
+        answer_overlap = len(answer_tokens & chunk_tokens)
+        query_overlap = len(query_tokens & chunk_tokens)
+        score = (answer_overlap * 2) + query_overlap
+        if _is_question_heavy(chunk["text"]):
+            score -= 2
+        scored.append((score, chunk))
+
+    scored.sort(key=lambda item: item[0], reverse=True)
+
+    citations = []
+    seen = set()
+    for score, chunk in scored:
+        key = (chunk["filename"], chunk["page"])
+        if key in seen:
+            continue
+        seen.add(key)
+        citations.append({
+            "filename": chunk["filename"],
+            "page": chunk["page"],
+            "snippet": _best_snippet(chunk["text"], answer_tokens),
+        })
+        if len(citations) >= max_citations:
+            break
+    return citations
 
 
 @app.route('/api/health', methods=['GET'])
@@ -134,6 +305,23 @@ def list_uploads():
     except Exception as e:
         logger.error(f"Error listing uploads: {str(e)}")
         return jsonify({'error': f'Failed to list uploads: {str(e)}'}), 500
+
+@app.route('/api/uploads/<path:filename>', methods=['GET'])
+def get_upload(filename):
+    """Serve an uploaded file so frontend can deep-link to PDF pages."""
+    try:
+        safe_name = Path(filename).name
+        if safe_name != filename or not allowed_file(safe_name):
+            return jsonify({'error': 'Invalid filename'}), 400
+
+        filepath = UPLOADS_DIR / safe_name
+        if not filepath.exists() or not filepath.is_file():
+            return jsonify({'error': 'File not found'}), 404
+
+        return send_from_directory(UPLOADS_DIR, safe_name, as_attachment=False)
+    except Exception as e:
+        logger.error(f"Error serving uploaded file {filename}: {str(e)}")
+        return jsonify({'error': f'Failed to serve file: {str(e)}'}), 500
 
 
 @app.route('/api/delete-upload/<filename>', methods=['DELETE'])
@@ -241,20 +429,12 @@ def chat():
                     for m in mistakes[:15]
                 )
         
-        # Load document content if provided
-        document_context = ""
-        if document_filenames:
-            document_texts = []
-            for filename in document_filenames:
-                filepath = UPLOADS_DIR / filename
-                if filepath.exists():
-                    content = read_file_content(filepath)
-                    if content:
-                        document_texts.append(f"--- Document: {filename} ---\n{content}\n")
-                        logger.info(f"Loaded document: {filename}")
-            
-            if document_texts:
-                document_context = "\n".join(document_texts)
+        # Build citation-aware document context for this question
+        document_context, selected_doc_chunks = build_relevant_document_context(
+            user_message=user_message,
+            document_filenames=document_filenames,
+            max_chunks=6,
+        )
         
         # Build context-aware system prompt
         system_prompt = f"""You are an AI homework helper for students. 
@@ -316,6 +496,10 @@ REFERENCE MATERIALS PROVIDED BY STUDENT:
 {document_context}
 
 Use the above reference materials to provide context-aware answers. You can reference specific materials from the documents when helping the student. When the student asks repeated or related questions, bring in relevant excerpts from these materials to deepen learning.
+When you reference material from a source, include short inline citations in this format:
+[source: filename, page N]
+If page number is not available, cite as:
+[source: filename]
 """
         
         # Get available tools
@@ -384,6 +568,14 @@ Use the above reference materials to provide context-aware answers. You can refe
                 logger.warning("Failed to save chat history: %s", e)
         
         out = {'response': ai_response, 'status': 'success'}
+        citations = select_citations_for_answer(
+            selected_doc_chunks,
+            user_message=user_message,
+            ai_response=ai_response,
+            max_citations=1,
+        )
+        if citations:
+            out['citations'] = citations
         if similar_info:
             out['similar_question'] = similar_info
         return jsonify(out), 200

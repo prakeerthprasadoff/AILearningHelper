@@ -35,9 +35,9 @@ function WeeklyReviewPanel({ courseName, panelClassName = "" }) {
 
   return (
     <section
-      className={`fade-in-up flex min-h-[320px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-9 lg:min-h-0 ${panelClassName}`}
+      className={`fade-in-up flex min-h-[320px] flex-col overflow-hidden rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-9 lg:h-full lg:min-h-0 ${panelClassName}`}
     >
-      <header className="mb-4 border-b border-[#FFE3B3]/25 pb-3">
+      <header className="mb-4 shrink-0 border-b border-[#FFE3B3]/25 pb-3">
         <p className="text-xs uppercase tracking-wide text-[#FFE3B3]">Learning</p>
         <h2 className="mt-0.5 text-2xl font-semibold leading-tight text-white">
           Weekly review
@@ -54,7 +54,7 @@ function WeeklyReviewPanel({ courseName, panelClassName = "" }) {
           {loading ? "Generating…" : "Generate weekly review"}
         </button>
       </header>
-      <div className="flex-1 space-y-2 overflow-y-auto pr-1">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {prompts.length > 0 && (
           <ul className="list-inside list-decimal space-y-1 text-sm text-[#E8F7FB]">
             {prompts.map((p, i) => (
@@ -63,7 +63,7 @@ function WeeklyReviewPanel({ courseName, panelClassName = "" }) {
           </ul>
         )}
         {fullText && (
-          <div className="prose prose-invert max-w-none text-sm text-[#E8F7FB]">
+          <div className="prose prose-invert max-w-none overflow-x-auto text-sm text-[#E8F7FB]">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{fullText}</ReactMarkdown>
           </div>
         )}

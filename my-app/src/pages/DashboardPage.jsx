@@ -147,7 +147,7 @@ function DashboardPage() {
           panelClassName={coursesHighlightClass}
         />
         {selectedLearningView && (
-          <div className={`lg:col-span-9 ${chatHighlightClass}`}>
+          <div className={`lg:col-span-9 lg:min-h-0 ${chatHighlightClass}`}>
             {selectedLearningView === "mistakes" && (
               <MistakesPanel courseName={selectedCourse.name} />
             )}

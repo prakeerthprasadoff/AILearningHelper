@@ -99,6 +99,7 @@ function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClass
         sender: "assistant",
         text: data.response,
         linkedUserMessage: cleanDraft,
+        citations: data.citations || [],
       };
 
       setMessages((prev) => [...prev, aiMessage]);
@@ -188,6 +189,43 @@ function ChatPanel({ courseName, selectedCourseId, selectedDocuments, panelClass
                     {message.text}
                   </ReactMarkdown>
                 </div>
+                {Array.isArray(message.citations) && message.citations.length > 0 && (
+                  <div className="mt-3 space-y-2 rounded-lg border border-[#1f4d6f]/25 bg-[#fff6df]/65 p-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#1f4d6f]">
+                      Sources
+                    </p>
+                    {message.citations.map((citation, idx) => {
+                      const fileUrl = `${config.API_BASE_URL}/api/uploads/${encodeURIComponent(
+                        citation.filename,
+                      )}${citation.page ? `#page=${citation.page}` : ""}`;
+                      return (
+                        <div
+                          key={`${citation.filename}-${citation.page || "na"}-${idx}`}
+                          className="rounded-md border border-[#1f4d6f]/20 bg-white/65 p-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold text-[#1f4d6f]">
+                              {citation.filename}
+                              {citation.page ? ` (page ${citation.page})` : ""}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => window.open(fileUrl, "_blank", "noopener,noreferrer")}
+                              className="rounded-md border border-[#1f4d6f]/40 bg-[#1f4d6f]/10 px-2 py-1 text-[11px] font-medium text-[#1f4d6f] hover:bg-[#1f4d6f]/20"
+                            >
+                              Open source
+                            </button>
+                          </div>
+                          {citation.snippet ? (
+                            <p className="mt-1 max-h-10 overflow-hidden text-xs text-[#1f4d6f]/80">
+                              {citation.snippet}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 {message.id !== 1 && useMemory && !message.mistakeSaved && (
                   <button
                     type="button"

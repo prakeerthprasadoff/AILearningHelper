@@ -86,9 +86,9 @@ function GeneratePanel({
 
   return (
     <section
-      className={`fade-in-up flex min-h-[320px] flex-col rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-9 lg:min-h-0 ${panelClassName}`}
+      className={`fade-in-up flex min-h-[320px] flex-col overflow-hidden rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-5 shadow-xl backdrop-blur-xl lg:col-span-9 lg:h-full lg:min-h-0 ${panelClassName}`}
     >
-      <header className="mb-4 border-b border-[#FFE3B3]/25 pb-3">
+      <header className="mb-4 shrink-0 border-b border-[#FFE3B3]/25 pb-3">
         <p className="text-xs uppercase tracking-wide text-[#FFE3B3]">Learning</p>
         <h2 className="mt-0.5 text-2xl font-semibold leading-tight text-white">
           Generate study materials
@@ -104,7 +104,7 @@ function GeneratePanel({
           className="mt-2 w-full max-w-xs rounded-xl border border-[#53D2DC]/35 bg-[#26648E]/55 px-3 py-1.5 text-sm text-white placeholder:text-[#b9dfe9]"
         />
       </header>
-      <div className="flex flex-wrap gap-3">
+      <div className="shrink-0 flex flex-wrap gap-3">
         <button
           type="button"
           onClick={generateStudyGuide}
@@ -122,11 +122,11 @@ function GeneratePanel({
           {loadingExam ? "Generating…" : "Generate practice exam"}
         </button>
       </div>
-      <div className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1">
+      <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
         {studyGuide && (
           <div className="rounded-xl border border-[#FFE3B3]/30 bg-[#26648E]/30 p-4">
             <h3 className="text-sm font-semibold text-[#FFE3B3]">Study guide</h3>
-            <div className="prose prose-invert mt-2 max-w-none text-sm markdown-content">
+            <div className="prose prose-invert mt-2 max-w-none overflow-x-auto text-sm markdown-content">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}
@@ -139,7 +139,7 @@ function GeneratePanel({
         {practiceExam && (
           <div className="rounded-xl border border-[#FFE3B3]/30 bg-[#26648E]/30 p-4">
             <h3 className="text-sm font-semibold text-[#FFE3B3]">Practice exam</h3>
-            <div className="prose prose-invert mt-2 max-w-none text-sm markdown-content">
+            <div className="prose prose-invert mt-2 max-w-none overflow-x-auto text-sm markdown-content practice-exam-content">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}

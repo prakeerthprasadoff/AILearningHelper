@@ -136,6 +136,23 @@ body {
 
 .markdown-content {
   color: #1f4d6f;
+  overflow-wrap: anywhere;
+}
+
+.practice-exam-content {
+  color: #ffe3b3;
+}
+
+.practice-exam-content h1,
+.practice-exam-content h2,
+.practice-exam-content h3,
+.practice-exam-content h4,
+.practice-exam-content h5,
+.practice-exam-content h6,
+.practice-exam-content strong,
+.practice-exam-content li,
+.practice-exam-content p {
+  color: #fff1d5;
 }
 
 .markdown-content p {
@@ -164,6 +181,12 @@ body {
 .markdown-content pre code {
   background-color: transparent;
   padding: 0;
+}
+
+.markdown-content .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.25rem;
 }
 
 .markdown-content ul,
