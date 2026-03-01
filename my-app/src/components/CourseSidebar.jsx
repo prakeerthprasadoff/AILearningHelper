@@ -12,6 +12,8 @@ function CourseSidebar({
   onLogout,
   selectedLearningView,
   onSelectLearningView,
+  onAddCourse,
+  onDeleteCourse,
   panelClassName = "",
 }) {
   return (
@@ -29,41 +31,69 @@ function CourseSidebar({
           Log out
         </button>
       </div>
-
+      {onAddCourse && (
+        <button
+          type="button"
+          onClick={onAddCourse}
+          className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#FFE3B3]/50 bg-[#26648E]/40 px-3 py-2.5 text-sm font-medium text-[#FFE3B3] transition-all hover:border-[#FFE3B3] hover:bg-[#FFE3B3]/10"
+        >
+          <span className="text-lg">+</span>
+          Add Course
+        </button>
+      )}
       <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
         {courses.map((course) => {
           const isSelected = selectedCourseId === course.id && !selectedLearningView;
           return (
-            <button
+            <div
               key={course.id}
-              type="button"
-              onClick={() => {
-                onSelectLearningView?.(null);
-                onSelectCourse(course.id);
-              }}
-              className={`group flex w-full cursor-pointer items-center justify-between rounded-xl border px-3 py-3 text-left text-sm transition-all duration-300 ${
-                isSelected
-                  ? "border-[#FFE3B3]/80 bg-[#FFE3B3]/30 text-white shadow-md shadow-[#26648E]/40"
-                  : "border-[#53D2DC]/30 bg-[#26648E]/45 text-[#EAF9FD] hover:-translate-y-0.5 hover:border-[#FFE3B3]/55 hover:bg-[#4F8FC0]/35"
-              }`}
+              className="group relative"
             >
-              <div className="min-w-0">
-                <p className="truncate font-semibold">{course.name}</p>
-                <p className="mt-1 inline-block rounded-md bg-[#FFE3B3]/20 px-2 py-0.5 text-[11px] text-[#FFE3B3]">
-                  {course.code}
-                </p>
-              </div>
-              <span
-                className={`ml-3 text-base transition-transform duration-300 ${
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectLearningView?.(null);
+                  onSelectCourse(course.id);
+                }}
+                className={`flex w-full cursor-pointer items-center justify-between rounded-xl border px-3 py-3 text-left text-sm transition-all duration-300 ${
                   isSelected
-                    ? "translate-x-0 text-[#FFE3B3]"
-                    : "text-[#A9D6E6] group-hover:translate-x-0.5 group-hover:text-[#FFE3B3]"
+                    ? "border-[#FFE3B3]/80 bg-[#FFE3B3]/30 text-white shadow-md shadow-[#26648E]/40"
+                    : "border-[#53D2DC]/30 bg-[#26648E]/45 text-[#EAF9FD] hover:-translate-y-0.5 hover:border-[#FFE3B3]/55 hover:bg-[#4F8FC0]/35"
                 }`}
-                aria-hidden="true"
               >
-                →
-              </span>
-            </button>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{course.name}</p>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="inline-block rounded-md bg-[#FFE3B3]/20 px-2 py-0.5 text-[11px] text-[#FFE3B3]">
+                      {course.code}
+                    </span>
+                    {onDeleteCourse && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteCourse(course.id);
+                        }}
+                        className="hidden rounded px-1.5 py-0.5 text-xs text-red-300 transition hover:text-red-200 group-hover:inline-block"
+                        title="Delete course"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <span
+                  className={`ml-3 text-base transition-transform duration-300 ${
+                    isSelected
+                      ? "translate-x-0 text-[#FFE3B3]"
+                      : "text-[#A9D6E6] group-hover:translate-x-0.5 group-hover:text-[#FFE3B3]"
+                  }`}
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </button>
+            </div>
           );
         })}
         <div className="mt-4 border-t border-[#FFE3B3]/25 pt-3">

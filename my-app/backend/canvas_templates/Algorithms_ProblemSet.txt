@@ -1,0 +1,48 @@
+ALGORITHMS FOR DECISION MAKING - CS 275
+Problem Set 1 - Due: March 15, 2026
+
+Instructions: Solve the following problems. Show all work and explain your reasoning.
+
+Problem 1: Markov Decision Processes (25 points)
+Consider a simple MDP with 3 states {S1, S2, S3} and 2 actions {A, B}.
+
+a) Define the transition probabilities:
+   P(S2|S1,A) = 0.7, P(S3|S1,A) = 0.3
+   P(S1|S2,B) = 0.5, P(S3|S2,B) = 0.5
+   
+b) Given rewards: R(S1) = 10, R(S2) = 5, R(S3) = 20
+   Calculate expected value of being in S1 and taking action A
+   
+c) Use value iteration with γ = 0.9 for 3 iterations starting with V₀(s) = 0
+
+Problem 2: Monte Carlo Tree Search (25 points)
+You are designing a game-playing AI using MCTS.
+
+a) Explain the four phases of MCTS: Selection, Expansion, Simulation, Backpropagation
+b) Given UCB1 formula: UCB1 = X̄ⱼ + C√(ln n / nⱼ)
+   Calculate UCB1 values for two nodes:
+   - Node 1: wins=15, visits=20, parent visits=50
+   - Node 2: wins=8, visits=10, parent visits=50
+   Use C = √2
+
+Problem 3: Policy Gradient Methods (30 points)
+Consider a simple reinforcement learning problem:
+
+a) Explain the difference between value-based and policy-based methods
+b) Write the policy gradient theorem equation
+c) Describe advantages of policy gradient methods over Q-learning
+
+Problem 4: Dynamic Programming (20 points)
+A robot needs to navigate a 4x4 grid from top-left to bottom-right.
+
+a) Formulate this as an MDP
+b) Define state space, action space, rewards, and transition model
+c) Use Bellman equation to find optimal path
+
+Bonus Problem (+10 points):
+Implement pseudocode for Q-learning algorithm with experience replay
+
+Submission Guidelines:
+- Submit solutions as PDF to Canvas
+- Include code for bonus problem
+- Collaboration allowed but cite sources

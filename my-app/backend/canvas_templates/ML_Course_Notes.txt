@@ -1,0 +1,34 @@
+MACHINE LEARNING - CS 200
+Lecture Notes - Week 3: Supervised Learning
+
+Topic: Linear Regression and Gradient Descent
+
+Linear Regression Fundamentals:
+Linear regression is a supervised learning algorithm used for predicting continuous values. The model learns a linear relationship between input features (X) and output variable (y).
+
+Hypothesis Function:
+h(x) = θ₀ + θ₁x₁ + θ₂x₂ + ... + θₙxₙ
+
+Cost Function (Mean Squared Error):
+J(θ) = (1/2m) Σ(h(x⁽ⁱ⁾) - y⁽ⁱ⁾)²
+
+Gradient Descent Algorithm:
+1. Initialize parameters θ randomly
+2. Repeat until convergence:
+   - Compute predictions for all training examples
+   - Calculate cost function J(θ)
+   - Update parameters: θⱼ := θⱼ - α(∂/∂θⱼ)J(θ)
+   where α is the learning rate
+
+Key Concepts:
+- Learning Rate (α): Controls step size in parameter updates
+- Convergence: When cost function stops decreasing significantly
+- Feature Scaling: Normalize features for faster convergence
+- Polynomial Features: Add higher-order terms for non-linear relationships
+
+Common Issues:
+- Overfitting: Model too complex, captures noise
+- Underfitting: Model too simple, misses patterns
+- Learning Rate: Too large causes divergence, too small causes slow convergence
+
+Next Week: Logistic Regression for Classification

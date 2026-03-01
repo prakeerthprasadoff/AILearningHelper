@@ -7,29 +7,9 @@ import MistakesPanel from "../components/MistakesPanel";
 import StudyPlanPanel from "../components/StudyPlanPanel";
 import WeeklyReviewPanel from "../components/WeeklyReviewPanel";
 import GeneratePanel from "../components/GeneratePanel";
+import CanvasImportModal from "../components/CanvasImportModal";
 
-const COURSES = [
-  {
-    id: "mech-101",
-    name: "Mechatronics",
-    code: "MECH 101",
-  },
-  {
-    id: "calc-101",
-    name: "Calculus 1",
-    code: "MATH 101",
-  },
-  {
-    id: "ml-200",
-    name: "Machine Learning",
-    code: "CS 200",
-  },
-  {
-    id: "dl-250",
-    name: "Deep Learning",
-    code: "CS 250",
-  },
-];
+const INITIAL_COURSES = [];
 
 const TOUR_STORAGE_KEY = "student_dashboard_tour_seen";
 
@@ -56,19 +36,99 @@ const TOUR_STEPS = [
 
 function DashboardPage() {
   const navigate = useNavigate();
-  const [selectedCourseId, setSelectedCourseId] = useState(COURSES[0].id);
+  const [courses, setCourses] = useState(INITIAL_COURSES);
+  const [selectedCourseId, setSelectedCourseId] = useState(INITIAL_COURSES[0]?.id || null);
   const [selectedDocuments, setSelectedDocuments] = useState([]);
+  const [isCanvasModalOpen, setIsCanvasModalOpen] = useState(false);
+  const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
   const [selectedLearningView, setSelectedLearningView] = useState(null);
   const [tourStepIndex, setTourStepIndex] = useState(-1);
 
   const selectedCourse = useMemo(
-    () => COURSES.find((course) => course.id === selectedCourseId) ?? COURSES[0],
-    [selectedCourseId],
+    () => courses.find((course) => course.id === selectedCourseId) || courses[0] || null,
+    [selectedCourseId, courses],
   );
 
   function handleLogout() {
     sessionStorage.removeItem("student_auth");
     navigate("/");
+  }
+
+  function handleAddCourse(newCourse) {
+    const courseWithId = {
+      ...newCourse,
+      id: `course-${Date.now()}`,
+    };
+    setCourses(prev => [...prev, courseWithId]);
+    setSelectedCourseId(courseWithId.id);
+    setIsAddCourseModalOpen(false);
+  }
+
+  function handleDeleteCourse(courseId) {
+    if (courses.length <= 1) {
+      alert("You must have at least one course");
+      return;
+    }
+
+    if (confirm("Are you sure you want to delete this course?")) {
+      setCourses(prev => prev.filter(c => c.id !== courseId));
+
+      // If we deleted the selected course, select the first remaining one
+      if (selectedCourseId === courseId) {
+        const remaining = courses.filter(c => c.id !== courseId);
+        setSelectedCourseId(remaining[0]?.id || null);
+      }
+    }
+  }
+
+  async function handleCanvasImport(apiKey) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch('/api/canvas-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ api_key: apiKey }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to sync with Canvas');
+      }
+
+      const data = await response.json();
+      const { courses: importedCourses, documents } = data;
+      
+      // Merge Canvas courses with existing courses (avoid duplicates)
+      setCourses(prevCourses => {
+        const existingIds = new Set(prevCourses.map(c => c.id));
+        const newCourses = importedCourses.filter(c => !existingIds.has(c.id));
+        return [...prevCourses, ...newCourses];
+      });
+      
+      // Select the first Canvas course if we added any
+      if (importedCourses.length > 0) {
+        setSelectedCourseId(importedCourses[0].id);
+      }
+      
+      // Show success message
+      alert(`Successfully imported ${importedCourses.length} courses and ${documents.length} documents from Canvas!`);
+      
+      // Trigger document list refresh
+      window.dispatchEvent(new Event('canvas-import-complete'));
+      
+    } catch (error) {
+      console.error("Error importing from Canvas:", error);
+      if (error?.name === "AbortError") {
+        throw new Error("Canvas import timed out. Please try again.");
+      }
+      throw error;
+    }
   }
 
   useEffect(() => {
@@ -126,7 +186,14 @@ function DashboardPage() {
       <div className="orb orb-one" />
       <div className="orb orb-two" />
 
-      <section className="relative z-10 mx-auto mb-4 flex w-full max-w-[1400px] justify-end">
+      <section className="relative z-10 mx-auto mb-4 flex w-full max-w-[1400px] justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => setIsCanvasModalOpen(true)}
+          className="cursor-pointer rounded-full border border-[#53D2DC]/60 bg-[#53D2DC]/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#D7EEF8] transition hover:bg-[#53D2DC]/30"
+        >
+          Import from Canvas
+        </button>
         <button
           type="button"
           onClick={startTour}
@@ -138,15 +205,17 @@ function DashboardPage() {
 
       <section className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-col gap-4 lg:h-[calc(100vh-7rem)] lg:grid lg:grid-cols-12 lg:gap-5">
         <CourseSidebar
-          courses={COURSES}
-          selectedCourseId={selectedCourse.id}
+          courses={courses}
+          selectedCourseId={selectedCourse?.id}
           onSelectCourse={setSelectedCourseId}
           onLogout={handleLogout}
           selectedLearningView={selectedLearningView}
           onSelectLearningView={setSelectedLearningView}
+          onAddCourse={() => setIsAddCourseModalOpen(true)}
+          onDeleteCourse={handleDeleteCourse}
           panelClassName={coursesHighlightClass}
         />
-        {selectedLearningView && (
+        {selectedLearningView && selectedCourse && (
           <div className={`lg:col-span-9 lg:min-h-0 ${chatHighlightClass}`}>
             {selectedLearningView === "mistakes" && (
               <MistakesPanel courseName={selectedCourse.name} />
@@ -163,7 +232,7 @@ function DashboardPage() {
             )}
           </div>
         )}
-        {!selectedLearningView && (
+        {!selectedLearningView && selectedCourse && (
           <>
             <ChatPanel
               courseName={selectedCourse.name}
@@ -176,6 +245,21 @@ function DashboardPage() {
               panelClassName={docsHighlightClass}
             />
           </>
+        )}
+        {!selectedLearningView && !selectedCourse && (
+          <div className="lg:col-span-9 flex items-center justify-center rounded-3xl border border-[#FFE3B3]/45 bg-[#26648E]/30 p-8 shadow-xl backdrop-blur-xl">
+            <div className="text-center">
+              <p className="text-xl font-semibold text-white mb-4">No courses yet</p>
+              <p className="text-sm text-[#EAF9FD] mb-6">Get started by adding your first course</p>
+              <button
+                type="button"
+                onClick={() => setIsAddCourseModalOpen(true)}
+                className="rounded-lg bg-[#FFE3B3] px-6 py-2.5 text-sm font-semibold text-[#1f4d6f] transition hover:bg-[#fff0cf]"
+              >
+                Add Your First Course
+              </button>
+            </div>
+          </div>
         )}
       </section>
 
@@ -218,7 +302,85 @@ function DashboardPage() {
           </div>
         </div>
       ) : null}
+
+      {/* Add Course Modal */}
+      {isAddCourseModalOpen && (
+        <AddCourseModal
+          onClose={() => setIsAddCourseModalOpen(false)}
+          onAdd={handleAddCourse}
+        />
+      )}
+
+      {/* Canvas Import Modal */}
+      <CanvasImportModal
+        isOpen={isCanvasModalOpen}
+        onClose={() => setIsCanvasModalOpen(false)}
+        onImport={handleCanvasImport}
+      />
     </main>
+  );
+}
+
+function AddCourseModal({ onClose, onAdd }) {
+  const [courseName, setCourseName] = useState("");
+  const [courseCode, setCourseCode] = useState("");
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!courseName.trim() || !courseCode.trim()) {
+      alert("Please fill in both course name and code");
+      return;
+    }
+    onAdd({ name: courseName.trim(), code: courseCode.trim() });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl border border-[#FFE3B3]/30 bg-[#26648E] p-6 shadow-2xl">
+        <h2 className="mb-4 text-xl font-bold text-white">Add New Course</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#FFE3B3]">
+              Course Name
+            </label>
+            <input
+              type="text"
+              value={courseName}
+              onChange={(e) => setCourseName(e.target.value)}
+              placeholder="e.g., Linear Algebra"
+              className="w-full rounded-lg border border-[#53D2DC]/30 bg-[#1f4d6f]/50 px-3 py-2 text-white placeholder-gray-400 focus:border-[#FFE3B3] focus:outline-none focus:ring-1 focus:ring-[#FFE3B3]"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#FFE3B3]">
+              Course Code
+            </label>
+            <input
+              type="text"
+              value={courseCode}
+              onChange={(e) => setCourseCode(e.target.value)}
+              placeholder="e.g., MATH 250"
+              className="w-full rounded-lg border border-[#53D2DC]/30 bg-[#1f4d6f]/50 px-3 py-2 text-white placeholder-gray-400 focus:border-[#FFE3B3] focus:outline-none focus:ring-1 focus:ring-[#FFE3B3]"
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-[#FFE3B3]/40 px-4 py-2 text-sm font-medium text-[#FFE3B3] transition hover:bg-[#FFE3B3]/10"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 rounded-lg bg-[#FFE3B3] px-4 py-2 text-sm font-semibold text-[#1f4d6f] transition hover:bg-[#fff0cf]"
+            >
+              Add Course
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
