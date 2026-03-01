@@ -1,0 +1,32 @@
+CALCULUS 1 - MATH 101
+Course Syllabus - Fall 2026
+
+Instructor: Dr. Sarah Mitchell
+Office Hours: MWF 2:00-3:30 PM
+
+Course Description:
+This course introduces students to differential and integral calculus. Topics include limits, continuity, derivatives, applications of derivatives, antiderivatives, and definite integrals.
+
+Learning Objectives:
+- Understand the concept of limits and continuity
+- Master differentiation techniques and rules
+- Apply derivatives to solve optimization problems
+- Understand the Fundamental Theorem of Calculus
+- Compute definite and indefinite integrals
+
+Required Materials:
+- Calculus: Early Transcendentals (8th Edition) by James Stewart
+- Scientific calculator (graphing calculator recommended)
+
+Grading:
+- Homework: 20%
+- Quizzes: 20%
+- Midterm Exam: 25%
+- Final Exam: 35%
+
+Weekly Topics:
+Week 1-2: Limits and Continuity
+Week 3-4: Derivatives and Differentiation Rules
+Week 5-6: Applications of Derivatives
+Week 7-8: Integration Basics
+Week 9-10: Applications of Integration

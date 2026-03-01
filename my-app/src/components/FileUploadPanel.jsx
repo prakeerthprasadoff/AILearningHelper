@@ -15,11 +15,25 @@ function FileUploadPanel({ onDocumentsSelect, panelClassName = "" }) {
 
   // Load already-uploaded files from backend on mount
   useEffect(() => {
+    fetchUploadedFiles();
+  }, []);
+
+  // Listen for Canvas import completion to refresh document list
+  useEffect(() => {
+    function handleCanvasImport() {
+      fetchUploadedFiles();
+    }
+    
+    window.addEventListener('canvas-import-complete', handleCanvasImport);
+    return () => window.removeEventListener('canvas-import-complete', handleCanvasImport);
+  }, []);
+
+  function fetchUploadedFiles() {
     fetch("/api/uploads")
       .then((r) => r.json())
       .then((data) => setUploadedFiles(data.files ?? []))
       .catch(() => {}); // backend may not be running yet
-  }, []);
+  }
 
   // Update parent component when selected files change
   useEffect(() => {

@@ -1,0 +1,42 @@
+DEEP LEARNING - CS 250
+Textbook Chapter 1: Introduction to Neural Networks
+
+1.1 What is Deep Learning?
+Deep learning is a subset of machine learning based on artificial neural networks with multiple layers. These networks can learn hierarchical representations of data, making them powerful for tasks like image recognition, natural language processing, and speech recognition.
+
+1.2 Neural Network Basics
+A neural network consists of:
+- Input Layer: Receives raw data
+- Hidden Layers: Process information through weighted connections
+- Output Layer: Produces final predictions
+
+Each neuron computes: z = w₁x₁ + w₂x₂ + ... + wₙxₙ + b
+Then applies activation function: a = σ(z)
+
+1.3 Common Activation Functions
+- Sigmoid: σ(z) = 1/(1 + e⁻ᶻ) - outputs between 0 and 1
+- ReLU: f(z) = max(0, z) - most popular for hidden layers
+- Tanh: tanh(z) = (eᶻ - e⁻ᶻ)/(eᶻ + e⁻ᶻ) - outputs between -1 and 1
+- Softmax: Used for multi-class classification output
+
+1.4 Forward Propagation
+Process of computing output from input:
+1. Compute weighted sum at each neuron
+2. Apply activation function
+3. Pass result to next layer
+4. Repeat until output layer
+
+1.5 Backpropagation
+Algorithm for training neural networks:
+1. Compute loss between prediction and actual value
+2. Calculate gradients using chain rule
+3. Update weights to minimize loss
+4. Iterate until convergence
+
+1.6 Training Considerations
+- Batch Size: Number of samples processed before updating weights
+- Epochs: Complete passes through training data
+- Optimization: SGD, Adam, RMSprop algorithms
+- Regularization: Dropout, L1/L2 to prevent overfitting
+
+Assignment: Implement a simple 2-layer neural network for MNIST digit classification

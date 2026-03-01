@@ -8,6 +8,7 @@ import os
 import PyPDF2
 from pathlib import Path
 import re
+import shutil
 
 from db import (
     init_db,
@@ -820,6 +821,98 @@ Be encouraging and supportive."""
         logger.error(f"Error processing streaming chat request: {str(e)}")
         return jsonify({
             'error': 'Failed to process streaming chat request',
+            'details': str(e)
+        }), 500
+
+
+@app.route('/api/canvas-sync', methods=['POST'])
+def canvas_sync():
+    """
+    Simulate Canvas LMS integration - validates API key and returns synthetic course data
+    """
+    try:
+        data = request.get_json()
+        api_key = data.get('api_key', '')
+        
+        # Demo API key validation
+        DEMO_API_KEY = "canvas_demo_2026"
+        
+        if api_key != DEMO_API_KEY:
+            return jsonify({'error': 'Invalid Canvas API key'}), 401
+        
+        # Define synthetic courses
+        courses = [
+            {
+                'id': 'calc-101',
+                'name': 'Calculus 1',
+                'code': 'MATH 101'
+            },
+            {
+                'id': 'ml-200',
+                'name': 'Machine Learning',
+                'code': 'CS 200'
+            },
+            {
+                'id': 'dl-250',
+                'name': 'Deep Learning',
+                'code': 'CS 250'
+            },
+            {
+                'id': 'adm-275',
+                'name': 'Algorithms for Decision Making',
+                'code': 'CS 275'
+            }
+        ]
+        
+        # Define synthetic documents (one per course)
+        documents = [
+            {
+                'filename': 'Calculus_1_Syllabus.txt',
+                'courseId': 'calc-101',
+                'title': 'Course Syllabus'
+            },
+            {
+                'filename': 'ML_Course_Notes.txt',
+                'courseId': 'ml-200',
+                'title': 'Week 3 Lecture Notes'
+            },
+            {
+                'filename': 'Deep_Learning_Chapter1.txt',
+                'courseId': 'dl-250',
+                'title': 'Textbook Chapter 1'
+            },
+            {
+                'filename': 'Algorithms_ProblemSet.txt',
+                'courseId': 'adm-275',
+                'title': 'Problem Set 1'
+            }
+        ]
+        
+        # Copy template files to uploads directory
+        templates_dir = Path(__file__).parent / 'canvas_templates'
+        
+        for doc in documents:
+            template_path = templates_dir / doc['filename']
+            upload_path = UPLOADS_DIR / doc['filename']
+            
+            if template_path.exists():
+                shutil.copy2(template_path, upload_path)
+                logger.info(f"Copied Canvas document: {doc['filename']}")
+            else:
+                logger.warning(f"Template file not found: {doc['filename']}")
+        
+        logger.info(f"Canvas API key validated, returning {len(courses)} courses and {len(documents)} documents")
+        
+        return jsonify({
+            'courses': courses,
+            'documents': documents,
+            'message': 'Successfully synced with Canvas'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing Canvas sync: {str(e)}")
+        return jsonify({
+            'error': 'Failed to sync with Canvas',
             'details': str(e)
         }), 500
 
