@@ -7,25 +7,36 @@ import "katex/dist/katex.min.css";
 import config from "../config";
 import { getUserIdentifier } from "../utils/auth";
 
-/** Normalize LLM math: convert [ \lim... ] / ( f(x) ) style to $$...$$ and $...$ so KaTeX renders. */
+/**
+ * Normalize LLM math without corrupting LaTeX.
+ * We only convert explicit LaTeX delimiters (\[...\], \(...\))
+ * and repair known malformed patterns produced by earlier transforms.
+ */
 function normalizeMathForDisplay(text) {
   if (!text || typeof text !== "string") return text;
   let out = text;
-  // Display math: [ \something ... ] → $$...$$
-  out = out.replace(/\[\s*((?:[^[\]]|\\.)*?)\s*\]/g, (_, inner) => {
-    if (/\\\w+|\\frac|\\lim|\\sum|\\int|\\to/.test(inner)) {
-      return `$$${inner.trim()}$$`;
-    }
-    return `[ ${inner} ]`;
-  });
-  // Inline math: ( \something ) or ( formula with \ ) → $...$ (only when it looks like LaTeX)
-  out = out.replace(/\(\s*((?:[^()]|\\.)+?)\s*\)/g, (_, inner) => {
-    const t = inner.trim();
-    if (/\\\w+|\\frac|\^|_\{|\\to/.test(t)) {
-      return `$${t}$`;
-    }
-    return `( ${inner} )`;
-  });
+
+  // Convert explicit LaTeX block delimiters: \[ ... \] -> $$ ... $$
+  out = out.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, (_, inner) => `$$${inner.trim()}$$`);
+
+  // Convert explicit LaTeX inline delimiters: \( ... \) -> $ ... $
+  out = out.replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, (_, inner) => `$${inner.trim()}$`);
+
+  // Repair malformed pattern like: \left$$ ... $$\right$$
+  out = out.replace(
+    /\\left\$\$\s*([\s\S]*?)\s*\$\$\\right\$\$/g,
+    (_, inner) => `\\left(${inner.trim()}\\right)`,
+  );
+
+  // Repair malformed pattern like: \left$$ ... $$\right
+  out = out.replace(
+    /\\left\$\$\s*([\s\S]*?)\s*\$\$\\right/g,
+    (_, inner) => `\\left(${inner.trim()}\\right)`,
+  );
+
+  // Remove accidental triple-dollar blocks.
+  out = out.replace(/\$\$\$\s*/g, "$$");
+
   return out;
 }
 
